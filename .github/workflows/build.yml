@@ -53,13 +53,16 @@ jobs:
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Plugin bauen
-        run: cmake --build build --target staffel_viper_readycheck
+        run: cmake --build build --target package_ts3plugin
+
+      - name: Paket umbenennen
+        run: mv build/staffel_viper_readycheck.ts3_plugin build/staffel_viper_readycheck_linux.ts3_plugin
 
       - name: Artefakt hochladen
         uses: actions/upload-artifact@v4
         with:
           name: plugin-linux
-          path: build/bin/staffel_viper_readycheck.so
+          path: build/staffel_viper_readycheck_linux.ts3_plugin
           if-no-files-found: error
 
   release:
@@ -71,17 +74,19 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: plugin-windows
+          path: artifacts/windows
 
       - name: Linux-Artefakt laden
         uses: actions/download-artifact@v4
         with:
           name: plugin-linux
+          path: artifacts/linux
 
       - name: GitHub Release erstellen
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            staffel_viper_readycheck.ts3_plugin
-            staffel_viper_readycheck.so
+            artifacts/windows/staffel_viper_readycheck.ts3_plugin
+            artifacts/linux/staffel_viper_readycheck_linux.ts3_plugin
           generate_release_notes: true
           name: "Status Check ${{ github.ref_name }}"

@@ -12,6 +12,19 @@
 #include <QElapsedTimer>
 #include <QFileInfo>
 #include <QDebug>
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QPushButton>
+#include <QDesktopServices>
+#include <QUrl>
+#include <QTimer>
 #include <cstring>
 #ifdef _WIN32
 #  include <windows.h>
@@ -115,6 +128,76 @@ static QString getLocalNickname() {
     const char* user = getlogin();
     return user ? QString::fromUtf8(user) : QStringLiteral("Unknown");
 #endif
+}
+
+// ---- Update check ----
+
+static bool isNewerVersion(const QString& remote, const QString& local) {
+    auto parse = [](const QString& v) {
+        QList<int> p;
+        for (const QString& s : v.split('.')) p << s.toInt();
+        while (p.size() < 3) p << 0;
+        return p;
+    };
+    auto r = parse(remote), l = parse(local);
+    for (int i = 0; i < 3; ++i) {
+        if (r[i] > l[i]) return true;
+        if (r[i] < l[i]) return false;
+    }
+    return false;
+}
+
+static void showUpdateDialog(const QString& newVersion) {
+    auto* dlg = new QDialog(nullptr);
+    dlg->setWindowTitle("Status Check \xe2\x80\x93 Update verf\xc3\xbcgbar");
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    dlg->setWindowFlags((dlg->windowFlags() | Qt::WindowStaysOnTopHint)
+                        & ~Qt::WindowContextHelpButtonHint);
+    dlg->setMinimumWidth(340);
+
+    auto* layout = new QVBoxLayout(dlg);
+    auto* lbl = new QLabel(
+        QString("Eine neue Version ist verf\xc3\xbcgbar: <b>v%1</b><br>"
+                "Installierte Version: v%2")
+        .arg(newVersion, QString(PLUGIN_VERSION)));
+    lbl->setWordWrap(true);
+    layout->addWidget(lbl);
+    layout->addSpacing(8);
+
+    auto* btns = new QHBoxLayout();
+    auto* btnDl     = new QPushButton("Jetzt herunterladen");
+    auto* btnLater  = new QPushButton("Sp\xc3\xa4ter");
+    btns->addWidget(btnDl);
+    btns->addWidget(btnLater);
+    layout->addLayout(btns);
+
+    QObject::connect(btnDl, &QPushButton::clicked, dlg, [dlg]() {
+        QDesktopServices::openUrl(QUrl("https://github.com/jannikhuber17/Status-Check/releases/latest"));
+        dlg->close();
+    });
+    QObject::connect(btnLater, &QPushButton::clicked, dlg, &QDialog::close);
+    dlg->show();
+}
+
+static void checkForUpdate() {
+    auto* nam = new QNetworkAccessManager();
+    QNetworkRequest req(QUrl("https://api.github.com/repos/jannikhuber17/Status-Check/releases/latest"));
+    req.setHeader(QNetworkRequest::UserAgentHeader,
+                  QString("StatusCheck-TS3/%1").arg(PLUGIN_VERSION));
+    req.setRawHeader("Accept", "application/vnd.github+json");
+
+    auto* reply = nam->get(req);
+    QObject::connect(reply, &QNetworkReply::finished, reply, [reply, nam]() {
+        reply->deleteLater();
+        nam->deleteLater();
+        if (reply->error() != QNetworkReply::NoError) return;
+
+        QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+        QString tag = doc.object().value("tag_name").toString();
+        if (tag.startsWith('v')) tag = tag.mid(1);
+        if (!tag.isEmpty() && isNewerVersion(tag, QString(PLUGIN_VERSION)))
+            showUpdateDialog(tag);
+    });
 }
 
 // ---- namespace Plugin — API for SettingsDialog ----
@@ -231,6 +314,7 @@ extern "C" int ts3plugin_init() {
     s_hud->move(50, 50);
 
     viperDbg("11 init complete\n");
+    QTimer::singleShot(5000, &checkForUpdate);
     return 0;
 }
 
