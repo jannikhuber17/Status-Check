@@ -22,14 +22,16 @@ jobs:
           Add-Content $env:GITHUB_ENV "Qt5_DIR=C:/Qt/5.15.2/msvc2019_64/lib/cmake/Qt5"
           Add-Content $env:GITHUB_PATH "C:/Qt/5.15.2/msvc2019_64/bin"
 
-      - name: MSBuild einrichten
-        uses: microsoft/setup-msbuild@v2
+      - name: MSVC x64 einrichten
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
 
       - name: CMake konfigurieren
-        run: cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH="C:/Qt/5.15.2/msvc2019_64"
+        run: cmake -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="C:/Qt/5.15.2/msvc2019_64"
 
       - name: Plugin bauen
-        run: cmake --build build --config Release --target package_ts3plugin
+        run: cmake --build build --target package_ts3plugin
 
       - name: Artefakt hochladen
         uses: actions/upload-artifact@v4
