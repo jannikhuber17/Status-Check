@@ -82,6 +82,8 @@ add_custom_target(package_ts3plugin
     COMMAND ${CMAKE_COMMAND} -E remove_directory "${PACKAGE_DIR}/plugins"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${PACKAGE_DIR}/plugins"
     COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${PROJECT_NAME}>" "${PACKAGE_DIR}/plugins/"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${PACKAGE_DIR}/plugins/staffel_viper_readycheck"
+    COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_SOURCE_DIR}/resources/icons/icon.png" "${PACKAGE_DIR}/plugins/staffel_viper_readycheck/"
     COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_SOURCE_DIR}/packaging/package.ini" "${PACKAGE_DIR}/"
     COMMAND ${CMAKE_COMMAND} -E tar "cf" "${CMAKE_BINARY_DIR}/${PACKAGE_NAME}.ts3_plugin" --format=zip
             "plugins" "package.ini"
