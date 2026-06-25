@@ -28,6 +28,7 @@
 #include <QPixmap>
 #include <QPainter>
 #include <QFile>
+#include <QDir>
 #include <cstring>
 #ifdef _WIN32
 #  include <windows.h>
@@ -60,7 +61,6 @@ static SupabaseClient* s_supabase    = nullptr;
 static HotkeyManager*  s_hotkey      = nullptr;
 static HudWindow*      s_hud         = nullptr;
 static SettingsDialog* s_settingsDlg = nullptr;
-static QString         s_menuIconPath;
 static uint64_t        s_localChannelId = 0;
 
 static QElapsedTimer   s_hotkeyDebounce;
@@ -348,23 +348,24 @@ extern "C" void ts3plugin_shutdown() {
 extern "C" void ts3plugin_initMenus(struct PluginMenuItem*** menuItems, char** menuIcon) {
     viperMenu("M1 called\n");
 
-    // initMenus is called before init — generate icon here directly
-    QString iconPath = getDllDir() + "/staffel_viper_readycheck_menuicon.png";
-    if (!QFile::exists(iconPath)) {
-        QPixmap pm(16, 16);
+    // Icon in Plugin-Unterordner — TS3 erwartet relativen Pfad vom plugins-Verzeichnis
+    QString dataDir  = getDllDir() + "/staffel_viper_readycheck";
+    QString iconFile = dataDir + "/icon.png";
+    QDir().mkpath(dataDir);
+    if (!QFile::exists(iconFile)) {
+        QPixmap pm(72, 72);
         pm.fill(Qt::transparent);
         QPainter p(&pm);
         p.setRenderHint(QPainter::Antialiasing);
-        p.setBrush(QColor(220, 220, 220));
-        p.setPen(QPen(QColor(130, 130, 130), 1));
-        p.drawEllipse(2, 2, 12, 12);
+        p.setBrush(Qt::white);
+        p.setPen(Qt::NoPen);
+        p.drawEllipse(4, 4, 64, 64);
         p.end();
-        pm.save(iconPath, "PNG");
+        pm.save(iconFile, "PNG");
     }
-    s_menuIconPath = iconPath;
-    QByteArray ba = iconPath.toUtf8();
-    *menuIcon = static_cast<char*>(malloc(ba.size() + 1));
-    memcpy(*menuIcon, ba.constData(), ba.size() + 1);
+    static const char kIconRelPath[] = "staffel_viper_readycheck/icon.png";
+    *menuIcon = static_cast<char*>(malloc(sizeof(kIconRelPath)));
+    memcpy(*menuIcon, kIconRelPath, sizeof(kIconRelPath));
 
     *menuItems = static_cast<PluginMenuItem**>(malloc(4 * sizeof(PluginMenuItem*)));
 
