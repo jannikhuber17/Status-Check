@@ -25,6 +25,9 @@
 #include <QDesktopServices>
 #include <QUrl>
 #include <QTimer>
+#include <QPixmap>
+#include <QPainter>
+#include <QFile>
 #include <cstring>
 #ifdef _WIN32
 #  include <windows.h>
@@ -57,6 +60,7 @@ static SupabaseClient* s_supabase    = nullptr;
 static HotkeyManager*  s_hotkey      = nullptr;
 static HudWindow*      s_hud         = nullptr;
 static SettingsDialog* s_settingsDlg = nullptr;
+static QString         s_menuIconPath;
 
 static QElapsedTimer   s_hotkeyDebounce;
 static uint64_t        s_serverHandle  = 0;
@@ -313,6 +317,22 @@ extern "C" int ts3plugin_init() {
     s_hud->setFixedWidth(260);
     s_hud->move(50, 50);
 
+    {
+        QString iconPath = getDllDir() + "/staffel_viper_readycheck_menuicon.png";
+        if (!QFile::exists(iconPath)) {
+            QPixmap pm(16, 16);
+            pm.fill(Qt::transparent);
+            QPainter p(&pm);
+            p.setRenderHint(QPainter::Antialiasing);
+            p.setBrush(Qt::white);
+            p.setPen(Qt::NoPen);
+            p.drawEllipse(1, 1, 14, 14);
+            p.end();
+            pm.save(iconPath, "PNG");
+        }
+        s_menuIconPath = iconPath;
+    }
+
     viperDbg("11 init complete\n");
     QTimer::singleShot(5000, &checkForUpdate);
     return 0;
@@ -338,7 +358,13 @@ extern "C" void ts3plugin_shutdown() {
 
 extern "C" void ts3plugin_initMenus(struct PluginMenuItem*** menuItems, char** menuIcon) {
     viperMenu("M1 called\n");
-    *menuIcon = nullptr;
+    if (!s_menuIconPath.isEmpty()) {
+        QByteArray ba = s_menuIconPath.toUtf8();
+        *menuIcon = static_cast<char*>(malloc(ba.size() + 1));
+        memcpy(*menuIcon, ba.constData(), ba.size() + 1);
+    } else {
+        *menuIcon = nullptr;
+    }
 
     *menuItems = static_cast<PluginMenuItem**>(malloc(4 * sizeof(PluginMenuItem*)));
 
