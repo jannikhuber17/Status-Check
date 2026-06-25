@@ -1,0 +1,52 @@
+# CMake
+build/
+cmake_install.cmake
+CMakeCache.txt
+CMakeFiles/
+CTestTestfile.cmake
+install_manifest.txt
+compile_commands.json
+
+# MSVC / Visual Studio
+.vs/
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+x64/
+Release/
+Debug/
+
+# Compiled output
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.dll
+*.exe
+
+# Qt generated files
+moc_*.cpp
+moc_*.h
+ui_*.h
+qrc_*.cpp
+*.autosave
+
+# Package output
+*.ts3_plugin
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+
+# Debug logs (local testing artefacts)
+C:/Users/Public/viperrc_*.txt
