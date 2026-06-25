@@ -16,7 +16,7 @@ public:
     void connectRealtime(const QString& channelName);
 
     // REST UPSERT: persists own status; Realtime broadcasts the change to all subscribers
-    void publishStatus(const QString& uid, const QString& nickname, ReadyStatus status);
+    void publishStatus(const QString& uid, const QString& nickname, ReadyStatus status, uint64_t ts3ChannelId);
 
     // REST GET: fetches current snapshot of all rows (call on channel join)
     void fetchAllMembers();

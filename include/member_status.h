@@ -10,9 +10,10 @@ enum class ReadyStatus {
 };
 
 struct MemberStatus {
-    uint64_t clientId;
+    uint64_t clientId     = 0;
     QString  nickname;
     QString  uid;
+    uint64_t ts3ChannelId = 0;
     ReadyStatus status = ReadyStatus::NotReady;
 
     QColor statusColor() const {

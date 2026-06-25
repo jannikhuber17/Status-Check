@@ -17,6 +17,7 @@ public:
     void        setLocalStatus(ReadyStatus status);
     void        resetLocalStatus();
     ReadyStatus localStatus() const { return m_localStatus; }
+    bool        isActive()    const { return m_active; }
 
     QList<MemberStatus> members() const;
 

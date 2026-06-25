@@ -35,13 +35,14 @@ void SupabaseClient::connectRealtime(const QString& channelName) {
     m_ws.open(req);
 }
 
-void SupabaseClient::publishStatus(const QString& uid, const QString& nickname, ReadyStatus status) {
+void SupabaseClient::publishStatus(const QString& uid, const QString& nickname, ReadyStatus status, uint64_t ts3ChannelId) {
     // REST UPSERT — Supabase then broadcasts the row change via Postgres Changes to all WS subscribers
     QJsonObject body{
-        {"uid",          uid},
-        {"nickname",     nickname},
-        {"status",       static_cast<int>(status)},
-        {"channel_name", m_channelName}
+        {"uid",            uid},
+        {"nickname",       nickname},
+        {"status",         static_cast<int>(status)},
+        {"channel_name",   m_channelName},
+        {"ts3_channel_id", static_cast<qint64>(ts3ChannelId)}
     };
 
     QNetworkRequest req = buildRestRequest("/rest/v1/ready_check");
@@ -78,9 +79,10 @@ void SupabaseClient::fetchAllMembers() {
         for (const QJsonValue& val : doc.array()) {
             QJsonObject row = val.toObject();
             MemberStatus ms;
-            ms.uid      = row["uid"].toString();
-            ms.nickname = row["nickname"].toString();
-            ms.status   = static_cast<ReadyStatus>(row["status"].toInt());
+            ms.uid          = row["uid"].toString();
+            ms.nickname     = row["nickname"].toString();
+            ms.status       = static_cast<ReadyStatus>(row["status"].toInt());
+            ms.ts3ChannelId = static_cast<uint64_t>(row["ts3_channel_id"].toVariant().toLongLong());
             if (!ms.uid.isEmpty())
                 Q_EMIT memberUpdated(ms);
         }
@@ -181,9 +183,10 @@ void SupabaseClient::handlePostgresChange(const QJsonObject& data) {
     // INSERT or UPDATE
     QJsonObject record = data["record"].toObject();
     MemberStatus ms;
-    ms.uid      = record["uid"].toString();
-    ms.nickname = record["nickname"].toString();
-    ms.status   = static_cast<ReadyStatus>(record["status"].toInt());
+    ms.uid          = record["uid"].toString();
+    ms.nickname     = record["nickname"].toString();
+    ms.status       = static_cast<ReadyStatus>(record["status"].toInt());
+    ms.ts3ChannelId = static_cast<uint64_t>(record["ts3_channel_id"].toVariant().toLongLong());
     if (!ms.uid.isEmpty())
         Q_EMIT memberUpdated(ms);
 }

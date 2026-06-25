@@ -61,6 +61,7 @@ static HotkeyManager*  s_hotkey      = nullptr;
 static HudWindow*      s_hud         = nullptr;
 static SettingsDialog* s_settingsDlg = nullptr;
 static QString         s_menuIconPath;
+static uint64_t        s_localChannelId = 0;
 
 static QElapsedTimer   s_hotkeyDebounce;
 static uint64_t        s_serverHandle  = 0;
@@ -290,7 +291,11 @@ extern "C" int ts3plugin_init() {
 
     viperDbg("9c connect membersChanged\n");
     QObject::connect(s_statusMgr, &StatusManager::membersChanged, s_statusMgr, []{
-        s_hud->setMembers(s_statusMgr->members());
+        QList<MemberStatus> visible;
+        for (const MemberStatus& m : s_statusMgr->members())
+            if (s_localChannelId != 0 && m.ts3ChannelId == s_localChannelId)
+                visible.append(m);
+        s_hud->setMembers(visible);
     });
 
     viperDbg("9d connect localStatusChanged\n");
@@ -298,7 +303,7 @@ extern "C" int ts3plugin_init() {
                      [](ReadyStatus newStatus){
         if (s_serverHandle == 0) return;
         if (s_hud && !s_hud->isVisible()) s_hud->show();
-        s_supabase->publishStatus(getLocalUid(), getLocalNickname(), newStatus);
+        s_supabase->publishStatus(getLocalUid(), getLocalNickname(), newStatus, s_localChannelId);
     });
 
     viperDbg("9e applyHotkeys\n");
@@ -316,22 +321,6 @@ extern "C" int ts3plugin_init() {
     viperDbg("10 position HUD\n");
     s_hud->setFixedWidth(260);
     s_hud->move(50, 50);
-
-    {
-        QString iconPath = getDllDir() + "/staffel_viper_readycheck_menuicon.png";
-        if (!QFile::exists(iconPath)) {
-            QPixmap pm(16, 16);
-            pm.fill(Qt::transparent);
-            QPainter p(&pm);
-            p.setRenderHint(QPainter::Antialiasing);
-            p.setBrush(Qt::white);
-            p.setPen(Qt::NoPen);
-            p.drawEllipse(1, 1, 14, 14);
-            p.end();
-            pm.save(iconPath, "PNG");
-        }
-        s_menuIconPath = iconPath;
-    }
 
     viperDbg("11 init complete\n");
     QTimer::singleShot(5000, &checkForUpdate);
@@ -358,13 +347,24 @@ extern "C" void ts3plugin_shutdown() {
 
 extern "C" void ts3plugin_initMenus(struct PluginMenuItem*** menuItems, char** menuIcon) {
     viperMenu("M1 called\n");
-    if (!s_menuIconPath.isEmpty()) {
-        QByteArray ba = s_menuIconPath.toUtf8();
-        *menuIcon = static_cast<char*>(malloc(ba.size() + 1));
-        memcpy(*menuIcon, ba.constData(), ba.size() + 1);
-    } else {
-        *menuIcon = nullptr;
+
+    // initMenus is called before init — generate icon here directly
+    QString iconPath = getDllDir() + "/staffel_viper_readycheck_menuicon.png";
+    if (!QFile::exists(iconPath)) {
+        QPixmap pm(16, 16);
+        pm.fill(Qt::transparent);
+        QPainter p(&pm);
+        p.setRenderHint(QPainter::Antialiasing);
+        p.setBrush(QColor(220, 220, 220));
+        p.setPen(QPen(QColor(130, 130, 130), 1));
+        p.drawEllipse(2, 2, 12, 12);
+        p.end();
+        pm.save(iconPath, "PNG");
     }
+    s_menuIconPath = iconPath;
+    QByteArray ba = iconPath.toUtf8();
+    *menuIcon = static_cast<char*>(malloc(ba.size() + 1));
+    memcpy(*menuIcon, ba.constData(), ba.size() + 1);
 
     *menuItems = static_cast<PluginMenuItem**>(malloc(4 * sizeof(PluginMenuItem*)));
 
@@ -470,6 +470,9 @@ extern "C" void ts3plugin_onConnectStatusChangeEvent(
                 s_localNickname = QString::fromUtf8(nick);
                 s_funcs.freeMemory(nick);
             }
+            uint64_t channelId = 0;
+            if (s_funcs.getChannelOfClient(s_serverHandle, myClientId, &channelId) == 0)
+                s_localChannelId = channelId;
         }
 
         s_statusMgr->resetLocalStatus();
@@ -477,16 +480,40 @@ extern "C" void ts3plugin_onConnectStatusChangeEvent(
         s_supabase->fetchAllMembers();
 
     } else if (newStatus == STATUS_DISCONNECTED) {
-        s_serverHandle = 0;
+        s_serverHandle   = 0;
+        s_localChannelId = 0;
         s_localNickname.clear();
         s_statusMgr->clearAll();
     }
 }
 
 extern "C" void ts3plugin_onClientMoveEvent(
-        uint64 /*serverConnectionHandlerID*/, anyID /*clientID*/,
-        uint64 /*oldChannelID*/, uint64 /*newChannelID*/,
-        int /*visibility*/, const char* /*moveMessage*/) {}
+        uint64 scHandlerID, anyID clientID,
+        uint64 /*oldChannelID*/, uint64 newChannelID,
+        int /*visibility*/, const char* /*moveMessage*/)
+{
+    if (s_serverHandle == 0 || !s_statusMgr) return;
+
+    anyID myId = 0;
+    s_funcs.getClientID(scHandlerID, &myId);
+
+    if (clientID == myId) {
+        s_localChannelId = newChannelID;
+        // Re-publish own status with new channel so others filter correctly
+        if (s_statusMgr->isActive() && s_supabase)
+            s_supabase->publishStatus(getLocalUid(), getLocalNickname(),
+                                       s_statusMgr->localStatus(), s_localChannelId);
+    }
+
+    // Re-apply channel filter for HUD
+    if (s_hud) {
+        QList<MemberStatus> visible;
+        for (const MemberStatus& m : s_statusMgr->members())
+            if (s_localChannelId != 0 && m.ts3ChannelId == s_localChannelId)
+                visible.append(m);
+        s_hud->setMembers(visible);
+    }
+}
 
 extern "C" void ts3plugin_onPluginCommandEvent(
         uint64 /*serverConnectionHandlerID*/,
