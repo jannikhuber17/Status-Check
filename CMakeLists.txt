@@ -38,14 +38,9 @@ set(HEADERS
     include/settings_dialog.h
 )
 
-set(RESOURCES
-    resources/resources.qrc
-)
-
 add_library(${PROJECT_NAME} SHARED
     ${SOURCES}
     ${HEADERS}
-    ${RESOURCES}
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
