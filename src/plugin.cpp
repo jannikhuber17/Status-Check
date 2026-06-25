@@ -13,7 +13,13 @@
 #include <QFileInfo>
 #include <QDebug>
 #include <cstring>
-#include <windows.h>
+#ifdef _WIN32
+#  include <windows.h>
+#else
+#  include <unistd.h>
+#  include <limits.h>
+#  include <dlfcn.h>
+#endif
 
 // ---- Supabase config ----
 static const char* kSupabaseUrl = "https://siadwqodyglyvhljcoyo.supabase.co";
@@ -68,6 +74,7 @@ static void applyHotkeys() {
 }
 
 static QString getDllDir() {
+#ifdef _WIN32
     HMODULE hMod = nullptr;
     GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
                        GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
@@ -75,21 +82,39 @@ static QString getDllDir() {
     wchar_t path[MAX_PATH] = {};
     GetModuleFileNameW(hMod, path, MAX_PATH);
     return QFileInfo(QString::fromWCharArray(path)).absolutePath();
+#else
+    Dl_info info{};
+    dladdr(reinterpret_cast<void*>(&getDllDir), &info);
+    return info.dli_fname ? QFileInfo(QString::fromUtf8(info.dli_fname)).absolutePath()
+                          : QString();
+#endif
 }
 
 static QString getLocalUid() {
+#ifdef _WIN32
     wchar_t comp[256] = {}, user[256] = {};
     DWORD cl = 256, ul = 256;
     GetComputerNameW(comp, &cl);
     GetUserNameW(user, &ul);
     return QString::fromWCharArray(comp) + "_" + QString::fromWCharArray(user);
+#else
+    char host[HOST_NAME_MAX] = {};
+    gethostname(host, sizeof(host));
+    const char* user = getlogin();
+    return QString::fromUtf8(host) + "_" + QString::fromUtf8(user ? user : "user");
+#endif
 }
 
 static QString getLocalNickname() {
     if (!s_localNickname.isEmpty()) return s_localNickname;
+#ifdef _WIN32
     wchar_t user[256] = {};
     DWORD ul = 256;
     return GetUserNameW(user, &ul) ? QString::fromWCharArray(user) : QStringLiteral("Unknown");
+#else
+    const char* user = getlogin();
+    return user ? QString::fromUtf8(user) : QStringLiteral("Unknown");
+#endif
 }
 
 // ---- namespace Plugin — API for SettingsDialog ----
@@ -140,9 +165,11 @@ extern "C" void ts3plugin_registerPluginID(const char* id) {
 // ---- Init ----
 
 extern "C" int ts3plugin_init() {
+#ifdef _WIN32
     { HANDLE f = CreateFileW(L"C:\\Users\\Public\\viperrc_init.txt",
           GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, 0, nullptr);
       if (f != INVALID_HANDLE_VALUE) CloseHandle(f); }
+#endif
 
     viperDbg("1 init start\n");
 

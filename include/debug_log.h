@@ -1,4 +1,6 @@
 #pragma once
+
+#ifdef _WIN32
 #include <windows.h>
 #include <cstring>
 
@@ -10,7 +12,6 @@ inline void viperDbg(const char* step) {
         CloseHandle(f);
     }
 }
-// initHotkeys/initMenus pre-init log — never cleared, always appended.
 inline void viperPre(const char* step) {
     HANDLE f = CreateFileW(L"C:\\Users\\Public\\viperrc_pre.txt",
                            FILE_APPEND_DATA, 0, nullptr, OPEN_ALWAYS, 0, nullptr);
@@ -19,7 +20,6 @@ inline void viperPre(const char* step) {
         CloseHandle(f);
     }
 }
-// Separate file for initMenus crash-tracing — written before every step.
 inline void viperMenu(const char* step) {
     HANDLE f = CreateFileW(L"C:\\Users\\Public\\viperrc_menu.txt",
                            FILE_APPEND_DATA, 0, nullptr, OPEN_ALWAYS, 0, nullptr);
@@ -28,3 +28,9 @@ inline void viperMenu(const char* step) {
         CloseHandle(f);
     }
 }
+
+#else
+inline void viperDbg(const char*) {}
+inline void viperPre(const char*) {}
+inline void viperMenu(const char*) {}
+#endif

@@ -59,7 +59,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt5::Widgets
     Qt5::Network
     Qt5::WebSockets
-    user32
+    $<$<BOOL:${WIN32}>:user32>
+    $<$<NOT:$<BOOL:${WIN32}>>:dl>
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
@@ -69,10 +70,10 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     NOMINMAX
 )
 
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    PREFIX ""
-    OUTPUT_NAME "staffel_viper_readycheck_win64"
-)
+set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
+if(WIN32)
+    set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "staffel_viper_readycheck_win64")
+endif()
 
 # ---- Packaging ----
 # Qt5 DLLs are NOT bundled – TS3 already ships identical Qt5 DLLs (same MSVC build).
