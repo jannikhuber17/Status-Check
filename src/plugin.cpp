@@ -363,7 +363,7 @@ extern "C" void ts3plugin_initMenus(struct PluginMenuItem*** menuItems, char** m
         p.end();
         pm.save(iconFile, "PNG");
     }
-    static const char kIconRelPath[] = "staffel_viper_readycheck/icon.png";
+    static const char kIconRelPath[] = "icon.png";
     *menuIcon = static_cast<char*>(malloc(sizeof(kIconRelPath)));
     memcpy(*menuIcon, kIconRelPath, sizeof(kIconRelPath));
 
