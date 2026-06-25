@@ -47,7 +47,7 @@ jobs:
       - name: Qt5 installieren
         run: |
           sudo apt-get update
-          sudo apt-get install -y qtbase5-dev qtwebsockets5-dev
+          sudo apt-get install -y qtbase5-dev libqt5websockets5-dev
 
       - name: CMake konfigurieren
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
