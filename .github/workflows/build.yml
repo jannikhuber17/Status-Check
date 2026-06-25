@@ -15,16 +15,15 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Qt5 installieren
-        uses: jurplel/install-qt-action@v3
-        with:
-          version: '5.15.2'
-          host: 'windows'
-          target: 'desktop'
-          arch: 'win64_msvc2019_64'
-          cache: true
+        shell: pwsh
+        run: |
+          pip install aqtinstall
+          aqt install-qt windows desktop 5.15.2 win64_msvc2019_64 --outputdir C:\Qt
+          Add-Content $env:GITHUB_ENV "Qt5_DIR=C:/Qt/5.15.2/msvc2019_64/lib/cmake/Qt5"
+          Add-Content $env:GITHUB_PATH "C:/Qt/5.15.2/msvc2019_64/bin"
 
       - name: CMake konfigurieren
-        run: cmake -B build -G "Visual Studio 17 2022" -A x64
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH="C:/Qt/5.15.2/msvc2019_64"
 
       - name: Plugin bauen
         run: cmake --build build --config Release --target package_ts3plugin
